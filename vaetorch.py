@@ -350,13 +350,13 @@ class VAE(nn.Module):
 
     def sample_generator(self, n_samples=1):
         latent = torch.randn([n_samples, self.latent_dims])
-        μ, σ = torch.generator(latents)
+        μ, σ = self.generator(latent)
         ϵs = torch.randn(μ.shape)
         return μ + σ * ϵs
 
     def sample_similar(self, examples):
-        latent = self.recognition(examples)
-        μ, σ = torch.generator(latents)
+        latent = self.recognition(example)
+        μ, σ = self.generator(latent)
         ϵs = torch.randn(μ.shape)
         return μ + σ * ϵs
 
@@ -460,8 +460,8 @@ class CVAE(nn.Module):
         return μ + σ * ϵs
 
     def sample_similar(self, condition, examples):
-        μ  = self.recognition([condition, examples])
-        μ, σ = torch.generator(latents)
+        latents = self.recognition([condition, examples])
+        μ, σ = self.generator(latents)
         ϵs = torch.randn(μ.shape)
         return μ + σ * ϵs
 
