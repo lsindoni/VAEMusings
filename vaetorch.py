@@ -242,6 +242,32 @@ class ProbNN(nn.Module):
         return ll.sum(axis=-1).mean()
 
 
+class SimpleProbNN(nn.Module):
+    def __init__(self, trunk_nn, output_dims):
+        super().__init__()
+        self.mean = mean_nn
+        self.log_sigma = log_sigma_nn
+        assert mean_nn.input_dims == log_sigma_nn.input_dims, "mean and covariance have different input shapes"
+        assert mean_nn.output_dims == log_sigma_nn.output_dims, "mean and covariance have different output shapes"
+        self.input_dims = self.mean.input_dims
+        self.output_dims = self.mean.output_dims
+
+    def forward(self, inputs):
+        return self.mean(inputs), torch.exp(self.log_sigma(inputs))
+
+    def sample(self, inputs):
+        μ, σ = self(inputs)
+        ϵs = torch.randn(σ.shape)
+        return μ + σ * ϵs
+
+    def log_likelihood(self, visible, latent):
+        μ, σ = self(latent)
+        exp = - 0.5 * (visible - μ)**2 / σ ** 2
+        penalty = - torch.log(σ)
+        ll = exp + penalty
+        return ll.sum(axis=-1).mean()
+
+
 def make_prob_nn(architecture):
     mean_nn = make_nn(architecture["μ"])
     log_sigma_nn = make_nn(architecture["log_σ"])
@@ -354,9 +380,15 @@ class VAE(nn.Module):
         ϵs = torch.randn(μ.shape)
         return μ + σ * ϵs
 
+    def sample_recognition(self, examples):
+        μ, σ = self.recognition(examples)
+        ϵs = torch.randn(μ.shape)
+        return μ + σ * ϵs
+
     def sample_similar(self, examples):
-        latent = self.recognition(example)
-        μ, σ = self.generator(latent)
+        μ_l, σ_l = self.recognition(examples)
+        latents = μ_l + σ_l * torch.randn(μ_l.shape)
+        μ, σ = self.generator(latents)
         ϵs = torch.randn(μ.shape)
         return μ + σ * ϵs
 
